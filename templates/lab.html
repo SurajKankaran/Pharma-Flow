@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Concurrency lab{% endblock %}
+{% block heading %}Concurrency lab{% endblock %}
+{% block sub %}Two real database sessions sell the same product at the same instant.{% endblock %}
+{% block content %}
+<div class="grid">
+  <div>
+    {% if result %}
+      {% if not result.finished %}
+        <div class="verdict fail">Only {{ result.log|length }} of 2 sessions reported back in time. Check that the scheduler is running, then try again.</div>
+      {% elif result.ok %}
+        <div class="verdict pass">Passed. Stock went from {{ result.before }} to {{ result.final }}: exactly the {{ result.sold }} unit(s) that were sold, never negative, nothing sold twice.</div>
+      {% else %}
+        <div class="verdict fail">Failed. Stock went from {{ result.before }} to {{ result.final }} after {{ result.sold }} unit(s) were sold. The numbers don't add up.</div>
+      {% endif %}
+      <div class="jobs">
+        {% for r in result.log %}
+        <div class="job {{ 'win' if r.result == 'SUCCESS' else 'lose' }}">
+          <b>{{ r.session_info.split(' (')[0] }}</b>
+          <div class="muted small">{{ r.session_info.split(' (')[1].rstrip(')') if ' (' in r.session_info }} at {{ r.log_time|fdate('%H:%M:%S.%f') }}</div>
+          <p style="margin:8px 0 2px"><span class="badge {{ 'ok' if r.result == 'SUCCESS' else 'bad' }}">{{ 'Sold' if r.result == 'SUCCESS' else 'Rejected' }}</span> asked for {{ r.attempted_qty }}</p>
+          <div class="small">{{ r.message }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      <p class="muted small">{{ 'The test left its stock changes in place.' if result.kept else 'The stock and sales from this test were rolled back so your data is as it was. If stock fell below a reorder level, an automatic purchase order may remain.' }}</p>
+    {% else %}
+      <section class="panel">
+        <h2>What this proves</h2>
+        <p>Two scheduler jobs each ask <b>process_sale</b> for stock, scheduled to start together. If the two requests add up to more than is on the shelf, exactly one can win. The row lock inside <b>process_sale</b> makes the second session wait, then re-read the real stock and be turned away cleanly.</p>
+        <p class="muted">Without that lock both sessions would read the same starting number and both would sell.</p>
+      </section>
+    {% endif %}
+  </div>
+
+  <section class="panel">
+    <div class="panel-h"><h2>Run a test</h2></div>
+    <form method="post" data-busy="Running, about 10 seconds">
+      <div class="field"><label for="lab-product">Product</label>
+        <select id="lab-product" name="product_id" required><option value="">Choose a product</option>
+          {% for o in options %}<option value="{{ o.product_id }}">{{ o.product_name }} ({{ o.sellable|int }} sellable)</option>{% endfor %}</select></div>
+      <div class="row2">
+        <div class="field"><label for="qa">Session A asks for</label><input id="qa" name="qty_a" type="number" min="1" value="7" required></div>
+        <div class="field"><label for="qb">Session B asks for</label><input id="qb" name="qty_b" type="number" min="1" value="7" required></div>
+      </div>
+      <p class="hint">Pick quantities that together exceed the stock to see one session turned away.</p>
+      <label class="inline small" style="margin:6px 0 14px"><input type="checkbox" name="keep" style="width:auto"> Keep the results instead of restoring stock</label>
+      <button class="btn" type="submit">Run concurrent sales</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

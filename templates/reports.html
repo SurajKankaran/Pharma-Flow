@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block heading %}Reports{% endblock %}
+{% block sub %}Low stock by supplier, and batches the trigger has flagged as near expiry.{% endblock %}
+{% block content %}
+<div class="grid">
+  <div class="stack">
+    <section class="panel flush">
+      <div class="panel-h"><h2>Low stock by supplier</h2></div>
+      {% for supplier, items in grouped.items() %}
+        <div style="padding:14px 20px 4px"><h3 style="font-size:1rem">{{ supplier }}</h3></div>
+        <div class="tbl"><table class="data">
+          <thead><tr><th>Product</th><th class="num">On hand</th><th class="num">Reorder level</th><th class="num">Days left</th></tr></thead>
+          <tbody>{% for r in items %}
+            <tr><td class="name">{{ r.product_name }}</td><td class="num">{{ r.current_stock }}</td><td class="num">{{ r.reorder_threshold }}</td>
+                <td class="num">{% if r.days_of_stock_remaining is none %}<span class="muted">No recent sales</span>{% else %}{{ '%.1f'|format(r.days_of_stock_remaining) }}{% endif %}</td></tr>
+          {% endfor %}</tbody>
+        </table></div>
+      {% else %}<div class="empty">Nothing is below its reorder level.</div>{% endfor %}
+    </section>
+
+    {% if console is not none %}
+    <section class="panel">
+      <div class="panel-h"><h2>Console report</h2></div>
+      <pre class="console">{% for l in console %}{{ l }}
+{% endfor %}</pre>
+    </section>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    <section class="panel">
+      <div class="panel-h"><h2>Run the cursor report</h2></div>
+      <p class="muted">Runs <b>print_low_stock_report</b>, the explicit-cursor procedure, and shows its DBMS_OUTPUT text exactly as SQL*Plus would.</p>
+      <form method="post" action="{{ url_for('report_console') }}"><button class="btn" type="submit">Run report</button></form>
+    </section>
+    <section class="panel">
+      <div class="panel-h"><h2>Near expiry</h2></div>
+      {% for e in expiring %}
+        <div class="inline" style="justify-content:space-between;padding:7px 0;border-top:1px solid #edf2f1">
+          <div><div class="name">{{ e.product_name }}</div><div class="sub">Batch {{ e.batch_no }}, {{ e.quantity_on_hand }} units, {{ e.expiry_date|fdate }}</div></div>
+          <span class="badge {{ 'bad' if e.days_left|int < 0 else 'warn' }}">{% if e.days_left|int < 0 %}Expired{% else %}{{ e.days_left|int }} days{% endif %}</span>
+        </div>
+      {% else %}<p class="muted">No flagged batches.</p>{% endfor %}
+    </section>
+  </div>
+</div>
+{% endblock %}

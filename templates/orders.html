@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "_ui.html" import po_badge %}
+{% block title %}Purchase orders{% endblock %}
+{% block heading %}Purchase orders{% endblock %}
+{% block sub %}Raised automatically when stock crosses a reorder level, one order per supplier.{% endblock %}
+{% block actions %}
+  <form method="post" action="{{ url_for('generate_orders') }}"><input type="hidden" name="mode" value="dry"><button class="btn ghost" type="submit">Preview auto-reorder</button></form>
+  <form method="post" action="{{ url_for('generate_orders') }}" data-confirm="Create purchase orders for every product below its reorder level?"><input type="hidden" name="mode" value="real"><button class="btn" type="submit">Run auto-reorder now</button></form>
+{% endblock %}
+{% block content %}
+{% if console is not none %}
+<section class="panel" style="margin-bottom:20px">
+  <div class="panel-h"><h2>{{ console_title }}</h2></div>
+  <pre class="console">{% for l in console %}{{ l }}
+{% endfor %}</pre>
+</section>
+{% endif %}
+<section class="panel flush">
+  {% for po in pos %}
+  <details class="po">
+    <summary>
+      <b>#{{ po.po_id }}</b>
+      <span class="name">{{ po.supplier_name }}</span>
+      {{ po_badge(po.status) }}
+      <span class="muted small">Ordered {{ po.order_date|fdate }}, due {{ po.expected_delivery_date|fdate }}</span>
+      <b class="right">{{ po.total_amount|money }}</b>
+    </summary>
+    <div class="po-body">
+      <table class="data">
+        <thead><tr><th>Product</th><th class="num">Quantity</th><th class="num">Unit cost</th><th class="num">Line total</th></tr></thead>
+        <tbody>{% for i in items.get(po.po_id, []) %}
+          <tr><td class="name">{{ i.product_name }}</td><td class="num">{{ i.quantity_ordered }}</td><td class="num">{{ i.unit_cost|money }}</td><td class="num">{{ i.line_total|money }}</td></tr>
+        {% endfor %}</tbody>
+      </table>
+      {% if po.status in ('PENDING', 'APPROVED') %}
+      <div class="po-actions">
+        <form method="post" action="{{ url_for('receive_po', po_id=po.po_id) }}" class="inline">
+          <label class="small" for="m{{ po.po_id }}">Shelf life, months</label>
+          <input id="m{{ po.po_id }}" type="number" name="shelf_months" value="24" min="1" max="120">
+          <button class="btn small" type="submit">Mark received and add to stock</button>
+        </form>
+        <form method="post" action="{{ url_for('cancel_po', po_id=po.po_id) }}" data-confirm="Cancel order #{{ po.po_id }}?"><button class="btn danger small" type="submit">Cancel order</button></form>
+      </div>
+      {% endif %}
+    </div>
+  </details>
+  {% else %}<div class="empty">No purchase orders yet. Push a product below its reorder level, or run the auto-reorder.</div>{% endfor %}
+</section>
+{% endblock %}

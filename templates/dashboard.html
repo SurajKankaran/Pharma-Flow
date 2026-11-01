@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% from "_ui.html" import gauge %}
+{% block title %}Dashboard{% endblock %}
+{% block heading %}Today at the pharmacy{% endblock %}
+{% block sub %}{{ now|fdate('%A, %d %B %Y') }}{% endblock %}
+{% block actions %}
+  <a class="btn ghost" href="{{ url_for('inventory', tab='batches') }}">Receive stock</a>
+  <a class="btn" href="{{ url_for('sales') }}">New sale</a>
+{% endblock %}
+{% block content %}
+<section class="band" aria-label="Key figures">
+  <div><span class="v">{{ kpi.products }}</span><span class="l">active products</span></div>
+  <div><span class="v">{{ '{:,}'.format(kpi.units|int) }}</span><span class="l">units on hand</span></div>
+  <div class="{{ 'warn' if kpi.low_count|int > 0 }}"><span class="v">{{ kpi.low_count }}</span><span class="l">below reorder level</span></div>
+  <div class="{{ 'bad' if kpi.near_expiry|int > 0 }}"><span class="v">{{ kpi.near_expiry }}</span><span class="l">batches near expiry</span></div>
+  <div><span class="v">{{ kpi.pending_pos }}</span><span class="l">open purchase orders</span></div>
+  <div><span class="v">{{ kpi.today_revenue|money }}</span><span class="l">sales today</span></div>
+</section>
+
+<div class="grid">
+  <div class="stack">
+    <section class="panel flush">
+      <div class="panel-h"><h2>Running low</h2><a class="small" href="{{ url_for('reports') }}">Full report</a></div>
+      {% if low %}
+      <div class="tbl"><table class="data">
+        <thead><tr><th>Product</th><th>On hand against reorder level</th><th>Days left</th><th>Status</th></tr></thead>
+        <tbody>
+        {% for r in low %}
+          <tr>
+            <td><div class="name">{{ r.product_name }}</div><div class="sub">{{ r.supplier_name }}</div></td>
+            <td><div class="gcell">{{ gauge(r.stock, r.reorder_threshold) }}<b>{{ r.stock }}</b><span class="muted small">/ {{ r.reorder_threshold }}</span></div></td>
+            <td>{% if r.days_left is none %}<span class="muted">No recent sales</span>{% else %}{{ '%.0f'|format(r.days_left) }} days{% endif %}</td>
+            <td>{% if r.on_order|int > 0 %}<span class="badge info">On order</span>{% else %}<span class="badge warn">Needs reorder</span>{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      {% else %}<div class="empty">Nothing is running low. Every product is above its reorder level.</div>{% endif %}
+    </section>
+
+    <section class="panel flush">
+      <div class="panel-h"><h2>Recent sales</h2><a class="small" href="{{ url_for('sales') }}">All sales</a></div>
+      <div class="tbl"><table class="data">
+        <thead><tr><th>Sale</th><th>Product</th><th class="num">Qty</th><th class="num">Total</th><th>When</th></tr></thead>
+        <tbody>
+        {% for s in recent %}
+          <tr><td>#{{ s.sale_id }}</td><td class="name">{{ s.product_name }}</td><td class="num">{{ s.quantity_sold }}</td><td class="num">{{ s.total_amount|money }}</td><td>{{ s.sale_date|fdate }}</td></tr>
+        {% else %}<tr><td colspan="5" class="empty">No sales recorded yet.</td></tr>{% endfor %}
+        </tbody>
+      </table></div>
+    </section>
+  </div>
+
+  <div class="stack">
+    <section class="panel">
+      <div class="panel-h"><h2>Expiring soon</h2></div>
+      {% for e in expiring %}
+        <div class="inline" style="justify-content:space-between;padding:7px 0;border-top:1px solid #edf2f1">
+          <div><div class="name">{{ e.product_name }}</div><div class="sub">Batch {{ e.batch_no }}, {{ e.quantity_on_hand }} units</div></div>
+          <span class="badge {{ 'bad' if e.days_left|int < 0 else 'warn' }}">{% if e.days_left|int < 0 %}Expired{% else %}{{ e.days_left|int }} days{% endif %}</span>
+        </div>
+      {% else %}<p class="muted">No batches are close to their expiry date.</p>{% endfor %}
+    </section>
+
+    <section class="panel">
+      <div class="panel-h"><h2>Open purchase orders</h2><a class="small" href="{{ url_for('orders') }}">Manage</a></div>
+      {% for p in pending %}
+        <div class="inline" style="justify-content:space-between;padding:7px 0;border-top:1px solid #edf2f1">
+          <div><div class="name">#{{ p.po_id }} {{ p.supplier_name }}</div><div class="sub">{{ p.lines }} line(s), due {{ p.expected_delivery_date|fdate }}</div></div>
+          <b>{{ p.total_amount|money }}</b>
+        </div>
+      {% else %}<p class="muted">No open orders. The system raises one automatically when stock crosses a reorder level.</p>{% endfor %}
+    </section>
+  </div>
+</div>
+{% endblock %}

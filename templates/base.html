@@ -1,0 +1,49 @@
+{% from "_ui.html" import icon %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}PharmaFlow{% endblock %} | PharmaFlow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="11" width="26" height="10" rx="5" transform="rotate(-35 16 16)" fill="#fff"/><path d="M12.4 9.2 21.6 22.8" stroke="#123639" stroke-width="2.4" transform="rotate(0)"/></svg>
+      PharmaFlow
+    </div>
+    {% set nav_items = [('dashboard','Dashboard','grid'),('inventory','Inventory','box'),('sales','Sales','cart'),('orders','Purchase orders','clip'),('reports','Reports','chart'),('lab','Concurrency lab','flask')] %}
+    <nav aria-label="Main">
+      {% for ep, label, ic in nav_items %}
+      <a href="{{ url_for(ep) }}" class="{{ 'on' if active == ep }}" {% if active == ep %}aria-current="page"{% endif %}>
+        {{ icon(ic) }}<span>{{ label }}</span>
+        {% if ep == 'orders' and nav_pending %}<b class="count">{{ nav_pending }}</b>{% endif %}
+      </a>
+      {% endfor %}
+    </nav>
+    <div class="side-foot">Pharmacy Inventory with Auto-Reordering. Oracle PL/SQL back end.</div>
+  </aside>
+
+  <main class="main">
+    <header class="page-head">
+      <div><h1>{% block heading %}{% endblock %}</h1><p>{% block sub %}{% endblock %}</p></div>
+      <div class="head-actions">{% block actions %}{% endblock %}</div>
+    </header>
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% if msgs %}
+      <div class="flashes" role="status">
+        {% for cat, m in msgs %}<div class="flash {{ cat }}"><span>{{ m }}</span><button type="button" aria-label="Dismiss">&times;</button></div>{% endfor %}
+      </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

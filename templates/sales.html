@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Sales{% endblock %}
+{% block heading %}Sales{% endblock %}
+{% block sub %}Each sale takes stock from the batch that expires first and fails cleanly if there isn't enough.{% endblock %}
+{% block content %}
+<div class="grid" style="grid-template-columns:minmax(280px,1fr) minmax(0,1.7fr)">
+  <section class="panel">
+    <div class="panel-h"><h2>New sale</h2></div>
+    <form method="post" action="{{ url_for('new_sale') }}">
+      <div class="field"><label for="sale-product">Product</label>
+        <select id="sale-product" name="product_id" required><option value="">Choose a product</option>
+          {% for o in options %}<option value="{{ o.product_id }}" data-price="{{ o.unit_price }}" data-sellable="{{ o.sellable|int }}">{{ o.product_name }}</option>{% endfor %}</select>
+        <span class="hint" id="sale-hint"></span></div>
+      <div class="row2">
+        <div class="field"><label for="sale-qty">Quantity</label><input id="sale-qty" name="quantity" type="number" step="any" required></div>
+        <div class="field"><label for="sale-price">Unit price</label><input id="sale-price" name="unit_price" type="number" step="0.01" min="0" placeholder="List price"></div>
+      </div>
+      <button class="btn" type="submit">Record sale</button>
+      <p class="hint" style="margin-top:10px">Leave the price empty to charge the list price. Quantities must be whole numbers; try a fractional or negative one to see the database reject it.</p>
+    </form>
+  </section>
+
+  <section class="panel flush">
+    <div class="panel-h"><h2>Recent sales</h2></div>
+    <div class="tbl"><table class="data">
+      <thead><tr><th>Sale</th><th>Product</th><th class="num">Qty</th><th class="num">Total</th><th>Batch</th><th></th></tr></thead>
+      <tbody>
+      {% for s in sales %}
+        <tr>
+          <td>#{{ s.sale_id }}<div class="sub">{{ s.sale_date|fdate('%d %b, %H:%M') }}</div></td>
+          <td class="name">{{ s.product_name }}</td>
+          <td class="num">{{ s.quantity_sold }}</td>
+          <td class="num">{{ s.total_amount|money }}</td>
+          <td>{{ s.batch_no or '' }}</td>
+          <td class="right">
+            {% if s.stock_id %}
+            <form method="post" action="{{ url_for('void_sale', sale_id=s.sale_id) }}" data-confirm="Void sale #{{ s.sale_id }} and put the stock back?">
+              <button class="btn danger small" type="submit">Void</button></form>
+            {% else %}<span class="badge neutral" title="Historical sales have no batch recorded, so they can't be voided">Historical</span>{% endif %}
+          </td>
+        </tr>
+      {% else %}<tr><td colspan="6" class="empty">No sales yet. Record the first one from the form.</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+</div>
+{% endblock %}

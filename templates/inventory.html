@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% from "_ui.html" import gauge %}
+{% block title %}Inventory{% endblock %}
+{% block heading %}Inventory{% endblock %}
+{% block sub %}Stock is tracked per batch, so each lot keeps its own expiry date.{% endblock %}
+{% block content %}
+<nav class="tabs" aria-label="Inventory view">
+  <a href="{{ url_for('inventory', tab='products') }}" class="{{ 'on' if tab != 'batches' }}">Products</a>
+  <a href="{{ url_for('inventory', tab='batches') }}" class="{{ 'on' if tab == 'batches' }}">Batches</a>
+</nav>
+<div class="grid">
+  <section class="panel flush">
+    <div class="panel-h">
+      <h2>{{ 'Batches' if tab == 'batches' else 'Products' }}</h2>
+      <input class="search" type="search" placeholder="Search" aria-label="Search" data-filter="#inv-table">
+    </div>
+    <div class="tbl">
+    {% if tab == 'batches' %}
+      <table class="data" id="inv-table">
+        <thead><tr><th>Product</th><th>Batch</th><th>Expiry</th><th>Quantity</th><th>Cost</th></tr></thead>
+        <tbody>
+        {% for b in batches %}
+          <tr>
+            <td><div class="name">{{ b.product_name }}</div><div class="sub">{{ b.supplier_name }}, received {{ b.date_received|fdate }}</div></td>
+            <td>{{ b.batch_no }}</td>
+            <td>{{ b.expiry_date|fdate }}<br>
+              {% if b.days_to_expiry|int < 0 %}<span class="badge bad">Expired</span>
+              {% elif b.near_expiry_flag == 'Y' %}<span class="badge warn">Expires in {{ b.days_to_expiry|int }} days</span>
+              {% else %}<span class="sub">{{ b.days_to_expiry|int }} days left</span>{% endif %}</td>
+            <td><form method="post" action="{{ url_for('adjust_stock') }}" class="inline">
+              <input type="hidden" name="stock_id" value="{{ b.stock_id }}">
+              <input type="number" name="quantity" min="0" value="{{ b.quantity_on_hand }}" aria-label="Quantity for batch {{ b.batch_no }}">
+              <button class="btn ghost small" type="submit">Set</button></form></td>
+            <td>{{ b.unit_cost|money }}</td>
+          </tr>
+        {% else %}<tr><td colspan="5" class="empty">No batches yet. Receive the first one from the form.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <table class="data" id="inv-table">
+        <thead><tr><th>Product</th><th>On hand against reorder level</th><th>Next expiry</th><th class="num">Price</th></tr></thead>
+        <tbody>
+        {% for p in products %}
+          <tr>
+            <td><div class="name">{{ p.product_name }}</div><div class="sub">{{ p.category }}, {{ p.supplier_name }}</div></td>
+            <td><div class="gcell">{{ gauge(p.stock, p.reorder_threshold) }}<b>{{ p.stock }}</b><span class="muted small">/ {{ p.reorder_threshold }}</span></div></td>
+            <td>{{ p.next_expiry|fdate }}<div class="sub">{{ p.batch_count }} batch(es)</div></td>
+            <td class="num">{{ p.unit_price|money }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-h"><h2>Receive stock</h2></div>
+    <form method="post" action="{{ url_for('receive_stock') }}">
+      <div class="field"><label for="r-product">Product</label>
+        <select id="r-product" name="product_id" required><option value="">Choose a product</option>
+          {% for o in options %}<option value="{{ o.product_id }}">{{ o.product_name }}</option>{% endfor %}</select></div>
+      <div class="field"><label for="r-batch">Batch number</label><input id="r-batch" name="batch_no" required maxlength="40" placeholder="B-XXX-2001"></div>
+      <div class="row2">
+        <div class="field"><label for="r-qty">Quantity</label><input id="r-qty" name="quantity" type="number" min="0" step="1" required></div>
+        <div class="field"><label for="r-cost">Unit cost</label><input id="r-cost" name="unit_cost" type="number" min="0" step="0.01" required></div>
+      </div>
+      <div class="field"><label for="r-exp">Expiry date</label><input id="r-exp" name="expiry_date" type="date" required></div>
+      <button class="btn" type="submit">Receive batch</button>
+      <p class="hint" style="margin-top:10px">Saving fires the stock triggers: the near-expiry flag is set, and a purchase order is raised if the product is still below its reorder level. Use <b>Set</b> on a batch to see the same thing when stock goes down.</p>
+    </form>
+  </section>
+</div>
+{% endblock %}

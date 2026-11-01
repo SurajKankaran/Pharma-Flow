@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Database problem{% endblock %}
+{% block heading %}The database didn't answer{% endblock %}
+{% block sub %}The page needs Oracle, and the request failed.{% endblock %}
+{% block content %}
+<section class="panel">
+  <pre class="console">{{ message }}</pre>
+  <p class="muted">Check the values in <b>.env</b> (user, password, DSN) and that <b>sql/08_final_deploy_all.sql</b> has been run in that schema. Then reload this page.</p>
+</section>
+{% endblock %}

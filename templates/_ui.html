@@ -1,0 +1,23 @@
+{% macro icon(n) -%}
+<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+{%- if n == 'grid' %}<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>
+{%- elif n == 'box' %}<path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>
+{%- elif n == 'cart' %}<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.5 12h11L21 7H6"/>
+{%- elif n == 'clip' %}<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v3H9zM9 12h6M9 16h6"/>
+{%- elif n == 'chart' %}<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>
+{%- elif n == 'flask' %}<path d="M9 3h6M10 3v6L4 19a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-6-10V3"/>
+{%- endif %}</svg>
+{%- endmacro %}
+
+{# Stock bar: the tick marks the reorder level. Amber fill = below it. #}
+{% macro gauge(stock, threshold) -%}
+{% set cap = [threshold * 2, stock, 1]|max %}
+<div class="gauge {{ 'low' if stock < threshold else 'ok' }}" title="{{ stock }} on hand, reorder at {{ threshold }}">
+  <span class="fill" style="width:{{ (stock / cap * 100)|round|int }}%"></span>
+  <span class="tick" style="left:{{ (threshold / cap * 100)|round|int }}%"></span>
+</div>
+{%- endmacro %}
+
+{% macro po_badge(status) -%}
+<span class="badge {{ {'PENDING':'warn','APPROVED':'info','RECEIVED':'ok','CANCELLED':'neutral'}.get(status, 'neutral') }}">{{ status|capitalize }}</span>
+{%- endmacro %}
